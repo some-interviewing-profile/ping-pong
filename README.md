@@ -72,6 +72,9 @@ constraints I wasn't sure I would be able to implement this in the given
 time, though I highly suspect it would be the better solution long-term,
 as it would allow us to keep various other endpoints running.
 
+(This was added, in a pinch just with global variables, in a
+past-submission-time commit.)
+
 The problem here would be that the background task queue would both need
 to be suspended, as well as the `time.sleep` call would ideally be
 solved differently, e.g. by having tasks with a specified execution

@@ -2,9 +2,11 @@ import argparse
 import json
 import logging
 import os
+import requests
 import signal
 import subprocess
 import sys
+import time
 
 
 logger = logging.getLogger(__name__)
@@ -54,6 +56,7 @@ def start_handler(args):
                               stdout=open("second.log", "w"),
                               stderr=subprocess.STDOUT,
                               env=os.environ | env, preexec_fn=preexec)
+    time.sleep(1)
 
     env["DO_INITIAL_PING"] = "true"
     env["OTHER_ENDPOINT"] = "http://localhost:20000/ping"
@@ -75,7 +78,8 @@ def pause_handler(_):
     if pid is None:
         logger.error("not running")
         return
-    subprocess.run(f"kill -STOP {pid['first']} {pid['second']}", shell=True)
+    requests.post("http://localhost:10000/pause")
+    requests.post("http://localhost:20000/pause")
 
 
 def resume_handler(_):
@@ -84,7 +88,8 @@ def resume_handler(_):
     if pid is None:
         logger.error("not running")
         return
-    subprocess.run(f"kill -CONT {pid['first']} {pid['second']}", shell=True)
+    requests.post("http://localhost:10000/resume")
+    requests.post("http://localhost:20000/resume")
 
 
 def stop_handler(_):
