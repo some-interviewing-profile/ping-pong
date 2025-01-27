@@ -42,3 +42,37 @@ As a side note, output of each of the two servers can be tailed from `first.log`
 tail -f first.log
 tail -f second.log
 ```
+
+# Solution
+
+The solution is implemented in Python using FastAPI. The code is
+structured as follows:
+
+- `pong-cli.py` handles server invocation, spawning two server instances
+  with separate arguments and keeping track of the server PID values in
+  order to implement the commands
+- `server.py` contains the FastAPI server implementation
+
+Start and stopping the game simply spawns, respectively kills the
+servers.  Pausing and resuming the game is implemented by suspending,
+respectively resuming the two server processes, by sending a SIGSTOP and
+SIGCONT signal to the processes.
+
+This was done given the time constraints - an alternative implementation
+might e.g. both handle the server processes in-process in Python
+directly, while keeping a supervisor process running with which the CLI
+would then communicate.  This would simplify the bookkeeping, as there'd
+be no need keep track of PIDs and various failure states, which might
+not be handled so well in the submitted solution.
+
+The suspending and resuming of the game could also be implemented by new
+endpoints on the server process, e.g. `/suspend` and `/resume`, which
+would in turn suspend and resume the background task queue - due to time
+constraints I wasn't sure I would be able to implement this in the given
+time, though I highly suspect it would be the better solution long-term,
+as it would allow us to keep various other endpoints running.
+
+The problem here would be that the background task queue would both need
+to be suspended, as well as the `time.sleep` call would ideally be
+solved differently, e.g. by having tasks with a specified execution
+time.  Again, this would allow for a better implementation long-term.
