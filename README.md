@@ -36,11 +36,9 @@ example:
 
 python pong-cli.py start 1000 : start pong game with 1 second between pongs.
 
-# Running
-
-Temporarily:
+As a side note, output of each of the two servers can be tailed from `first.log` and `second.log`, respectively:
 
 ```bash
-DO_INITIAL_PING=false OTHER_ENDPOINT=http://localhost:10000/ping PONG_TIME_MS=1000 fastapi dev server --port 20000
-DO_INITIAL_PING=true OTHER_ENDPOINT=http://localhost:20000/ping PONG_TIME_MS=1000 fastapi dev server --port 10000
+tail -f first.log
+tail -f second.log
 ```

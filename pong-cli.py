@@ -1,5 +1,9 @@
 import argparse
+import json
 import logging
+import os
+import signal
+import subprocess
 import sys
 
 
@@ -7,20 +11,90 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
+PIDFILE = "pid.json"
+
+
+def read_pid_file(filename):
+    try:
+        with open(filename) as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error("failed to read pid file: %s", e)
+
+
+def write_pid_file(filename, pid):
+    with open(filename, "w") as f:
+        json.dump(pid, f)
+
+
+def delete_pid_file(filename):
+    try:
+        os.remove(filename)
+    except Exception as e:
+        logger.error("failed to delete pid file: %s", e)
+
+
+def preexec():
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
+
 def start_handler(args):
     logger.info("start %s", args.pong_time_ms)
+    pid = read_pid_file(PIDFILE)
+    if pid is not None:
+        logger.warning("already running")
+        return
+
+    env = {
+        "DO_INITIAL_PING": "false",
+        "OTHER_ENDPOINT": "http://localhost:10000/ping",
+        "PONG_TIME_MS": "1000",
+    }
+    second = subprocess.Popen(["uvicorn", "server:app", "--port", "20000"],
+                              stdout=open("second.log", "w"),
+                              stderr=subprocess.STDOUT,
+                              env=os.environ | env, preexec_fn=preexec)
+
+    env["DO_INITIAL_PING"] = "true"
+    env["OTHER_ENDPOINT"] = "http://localhost:20000/ping"
+    first = subprocess.Popen(["uvicorn", "server:app", "--port", "10000"],
+                             stdout=open("first.log", "w"),
+                             stderr=subprocess.STDOUT,
+                             env=os.environ | env,
+                             preexec_fn=preexec)
+
+    write_pid_file(PIDFILE, {
+        "second": second.pid,
+        "first": first.pid,
+    })
 
 
-def pause_handler(args):
+def pause_handler(_):
     logger.info("pause")
+    pid = read_pid_file(PIDFILE)
+    if pid is None:
+        logger.error("not running")
+        return
+    subprocess.run(f"kill -STOP {pid['first']} {pid['second']}", shell=True)
 
 
-def resume_handler(args):
+def resume_handler(_):
     logger.info("resume")
+    pid = read_pid_file(PIDFILE)
+    if pid is None:
+        logger.error("not running")
+        return
+    subprocess.run(f"kill -CONT {pid['first']} {pid['second']}", shell=True)
 
 
-def stop_handler(args):
+def stop_handler(_):
     logger.info("stop")
+    pid = read_pid_file(PIDFILE)
+    if pid is None:
+        logger.error("not running")
+        return
+    subprocess.run(f"kill {pid['first']} {pid['second']}", shell=True)
+    delete_pid_file(PIDFILE)
 
 
 def main():
