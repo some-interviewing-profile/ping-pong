@@ -1,42 +1,48 @@
-from contextlib import asynccontextmanager
-from fastapi import BackgroundTasks, FastAPI, Request
+import argparse
 import logging
-from pydantic_settings import BaseSettings
-import requests
-import time
+import sys
 
 
-logger = logging.getLogger("uvicorn.error")
+logger = logging.getLogger(__name__)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
-class Settings(BaseSettings):
-    do_initial_ping: bool
-    other_endpoint: str
-    pong_time_ms: int
+def start_handler(args):
+    logger.info("start %s", args.pong_time_ms)
 
 
-settings = Settings()
+def pause_handler(args):
+    logger.info("pause")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    if settings.do_initial_ping:
-        ping_server(settings.other_endpoint, 0)
-    yield
+def resume_handler(args):
+    logger.info("resume")
 
 
-app = FastAPI(lifespan=lifespan)
+def stop_handler(args):
+    logger.info("stop")
 
 
-def ping_server(endpoint, pong_time_ms):
-    logger.info("sleeping for %d ms", pong_time_ms)
-    time.sleep(pong_time_ms / 1000)
+def main():
+    args = argparse.ArgumentParser()
+    subs = args.add_subparsers(required=True)
 
-    logger.info("pinging %s", endpoint)
-    requests.get(endpoint)
+    start = subs.add_parser("start")
+    start.add_argument("pong_time_ms", type=int)
+    start.set_defaults(func=start_handler)
+
+    pause = subs.add_parser("pause")
+    pause.set_defaults(func=pause_handler)
+
+    resume = subs.add_parser("resume")
+    resume.set_defaults(func=resume_handler)
+
+    stop = subs.add_parser("stop")
+    stop.set_defaults(func=stop_handler)
+
+    namespace = args.parse_args()
+    namespace.func(namespace)
 
 
-@app.get("/ping")
-async def ping_handler(background_tasks: BackgroundTasks):
-    background_tasks.add_task(ping_server, settings.other_endpoint, settings.pong_time_ms)
-    return "pong"
+if __name__ == "__main__":
+    main()
