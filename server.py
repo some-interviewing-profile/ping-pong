@@ -1,8 +1,11 @@
 from datetime import datetime, timedelta, timezone
+
+import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import logging
+import os
 from pydantic_settings import BaseSettings
 import requests
 
@@ -47,7 +50,7 @@ async def ping_handler():
         "waiting for %d seconds before pinging back, scheduled for %s", seconds, date
     )
     scheduler.add_job(
-        ping_server, args=[settings.other_endpoint], run_date=date, id="ping"
+        ping_server, args=[settings.other_endpoint], run_date=date, id="ping", misfire_grace_time=None
     )
     return "pong"
 
@@ -70,3 +73,7 @@ async def resume_handler():
         logger.info("rescheduling ping back to %s, delayed by %s", date, delay)
         job.reschedule("date", run_date=date)
         job.resume()
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, port=int(os.getenv("PORT")))
