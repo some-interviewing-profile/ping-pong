@@ -43,8 +43,12 @@ def ping_server(endpoint):
 async def ping_handler():
     seconds = settings.pong_time_ms / 1000
     date = datetime.now() + timedelta(seconds=seconds)
-    logger.info("waiting for %d seconds before pinging back, scheduled for %s", seconds, date)
-    scheduler.add_job(ping_server, args=[settings.other_endpoint], run_date=date, id="ping")
+    logger.info(
+        "waiting for %d seconds before pinging back, scheduled for %s", seconds, date
+    )
+    scheduler.add_job(
+        ping_server, args=[settings.other_endpoint], run_date=date, id="ping"
+    )
     return "pong"
 
 
@@ -56,6 +60,7 @@ async def pause_handler():
         delay = job.trigger.get_next_fire_time(None, None) - datetime.now(timezone.utc)
         logger.info("when unpaused, ping back will be delayed by %s", delay)
         job.pause()
+
 
 @app.post("/resume")
 async def resume_handler():

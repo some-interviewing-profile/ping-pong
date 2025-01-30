@@ -52,24 +52,32 @@ def start_handler(args):
         "OTHER_ENDPOINT": "http://localhost:10000/ping",
         "PONG_TIME_MS": str(args.pong_time_ms),
     }
-    second = subprocess.Popen(["uvicorn", "server:app", "--port", "20000"],
-                              stdout=open("second.log", "w"),
-                              stderr=subprocess.STDOUT,
-                              env=os.environ | env, preexec_fn=preexec)
+    second = subprocess.Popen(
+        ["uvicorn", "server:app", "--port", "20000"],
+        stdout=open("second.log", "w"),
+        stderr=subprocess.STDOUT,
+        env=os.environ | env,
+        preexec_fn=preexec,
+    )
     time.sleep(1)
 
     env["DO_INITIAL_PING"] = "true"
     env["OTHER_ENDPOINT"] = "http://localhost:20000/ping"
-    first = subprocess.Popen(["uvicorn", "server:app", "--port", "10000"],
-                             stdout=open("first.log", "w"),
-                             stderr=subprocess.STDOUT,
-                             env=os.environ | env,
-                             preexec_fn=preexec)
+    first = subprocess.Popen(
+        ["uvicorn", "server:app", "--port", "10000"],
+        stdout=open("first.log", "w"),
+        stderr=subprocess.STDOUT,
+        env=os.environ | env,
+        preexec_fn=preexec,
+    )
 
-    write_pid_file(PIDFILE, {
-        "second": second.pid,
-        "first": first.pid,
-    })
+    write_pid_file(
+        PIDFILE,
+        {
+            "second": second.pid,
+            "first": first.pid,
+        },
+    )
 
 
 def pause_handler(_):
