@@ -50,7 +50,7 @@ def start_handler(args):
     env = {
         "DO_INITIAL_PING": "false",
         "OTHER_ENDPOINT": "http://localhost:10000/ping",
-        "PONG_TIME_MS": "1000",
+        "PONG_TIME_MS": str(args.pong_time_ms),
     }
     second = subprocess.Popen(["uvicorn", "server:app", "--port", "20000"],
                               stdout=open("second.log", "w"),
