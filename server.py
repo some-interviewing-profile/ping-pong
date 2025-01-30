@@ -3,11 +3,12 @@ from datetime import datetime, timedelta, timezone
 import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
+import json
 from fastapi import FastAPI
 import logging
-import os
 from pydantic_settings import BaseSettings
 import requests
+import socket
 
 
 logger = logging.getLogger("uvicorn.error")
@@ -19,7 +20,7 @@ class Settings(BaseSettings):
     pong_time_ms: int
 
 
-settings = Settings()
+settings = Settings(do_initial_ping=False, other_endpoint="")
 
 
 scheduler = AsyncIOScheduler()
@@ -75,5 +76,42 @@ async def resume_handler():
         job.resume()
 
 
+CONFIGFILE = "config.json"
+
+
+def main():
+    try:
+        with open(CONFIGFILE) as f:
+            config = json.load(f)
+            port1 = config["port1"]
+            port2 = config["port2"]
+            logger.info("running on port %d", port2)
+            settings.do_initial_ping = True
+            settings.other_endpoint = f"http://localhost:{port1}/ping"
+            uvicorn.run(app, port=port2)
+            return
+    except Exception as e:
+        logger.error("failed to read config file: %s", e)
+
+    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s1.bind(("localhost", 0))
+    port1 = s1.getsockname()[1]
+
+    s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s2.bind(("localhost", 0))
+
+    port2 = s2.getsockname()[1]
+    with open(CONFIGFILE, "w") as f:
+        json.dump({
+            "port1": port1,
+            "port2": port2,
+        }, f)
+    settings.other_endpoint = f"http://localhost:{port2}/ping"
+
+    logger.info("running on port %d", port1)
+    uvicorn.run(app, fd=s1.fileno())
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, port=int(os.getenv("PORT")))
+    main()
